@@ -1,8 +1,11 @@
 from sqlalchemy import create_engine, Column, String, Integer, Text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from typing import Generator
-
-DATABASE_URL = "postgresql://nwsl:nwsl@localhost/nwsl_db"
+import os
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://nwsl:nwsl@localhost/nwsl_db"
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
