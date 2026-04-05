@@ -340,7 +340,7 @@ export AIRFLOW_HOME=~/airflow
 airflow db migrate
 airflow users create \
   --username admin --password admin \
-  --firstname Marta --lastname Skomin \
+  --firstname Admin --lastname Admin \
   --role Admin --email your@email.com
 
 # copy DAGs
@@ -359,7 +359,7 @@ Open **http://localhost:8080** and trigger DAGs manually from the UI.
 print_squad_header >> print_roster
 ```
 
-Prints the Gotham FC squad header and full roster by position.
+Prints the NJ/NY Gotham FC squad header and full roster by position.
 
 ### DAG: `denver_summit_roster`
 
@@ -398,8 +398,8 @@ psql -U nwsl -d nwsl_db -h localhost \
 
 ## Teams
 
-### Gotham FC
-New York's NWSL team — 19 players from 5 countries including Germany, Brazil, England, Israel, and the USA.
+### NJ/NY Gotham FC
+New Jersey/New York NWSL team — 19 players from 5 countries including Germany, Brazil, England, Israel, and the USA.
 
 ### Denver Summit FC
 Denver's NWSL team — 27 players from 8 countries including France, Canada, Mexico, Germany, England, Spain, Japan, and the USA.
