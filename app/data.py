@@ -19,7 +19,7 @@ def load_rosters(db: Session):
         print("Database already seeded — skipping")
         return
 
-    from app.seed_data import GOTHAM_ROSTER, DENVER_ROSTER, TEAMS
+    from app.seed_data import TEAMS
     count = 0
     for team_name, roster in TEAMS.items():
         for p in roster:
