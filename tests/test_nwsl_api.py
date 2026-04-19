@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.main import app
+from app.main import app, limiter
 from app.database import Base, get_db
 
 # ── Test database setup ───────────────────────────────────
@@ -242,3 +242,26 @@ class TestSquadStats:
         response = client.get("/stats/gotham-fc")
         # Rose Lavelle is 29, Midge Purce is 29 — youngest tied
         assert response.json()["youngest_player"] in ["Rose Lavelle", "Midge Purce"]
+
+
+
+class TestRateLimiter:
+    def test_rate_limit_enforced(self, client):
+        """Verify rate limiting returns 429 when limit exceeded."""
+        limiter.enabled = True
+        try:
+            # POST /players limit is 10/minute — fire 11 requests
+            responses = []
+            for i in range(11):
+                r = client.post("/players", json={
+                    "name": f"Test Player {i}",
+                    "number": 99 + i,
+                    "age": 25,
+                    "country": "USA",
+                    "position": "MF",
+                    "team": "Gotham FC",
+                })
+                responses.append(r.status_code)
+            assert 429 in responses, "Expected at least one 429 after exceeding limit"
+        finally:
+            limiter.enabled = False    
