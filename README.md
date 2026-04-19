@@ -1,18 +1,19 @@
 # NWSL Roster API Overview
 REST API built with FastAPI, PostgreSQL, and Apache Kafka.
 
-Stack: Python · FastAPI · SQLAlchemy · PostgreSQL · Apache Kafka · Airflow · Docker
+Stack: Python · FastAPI · SQLAlchemy · PostgreSQL · Apache Kafka · Airflow · Docker · slowapi
 Features:
 - Full CRUD REST API with OpenAPI documentation
 - PostgreSQL backend with SQLAlchemy ORM
 - Kafka event publishing on player mutations
 - Airflow DAGs for roster workflow automation
 - Pydantic models for request validation
+- IP-based rate limiting via slowapi
 
 
 # NWSL Roster API
 
-A production-pattern REST API for NWSL team rosters, built with **FastAPI**, **PostgreSQL**, **Apache Kafka**, and **Apache Airflow**. Demonstrates a full modern Python backend stack including event-driven architecture, database persistence, workflow orchestration, and automatic OpenAPI documentation.
+A production-pattern REST API for NWSL team rosters, built with **FastAPI**, **PostgreSQL**, **Apache Kafka**, and **Apache Airflow**. Demonstrates a full modern Python backend stack including event-driven architecture, database persistence, workflow orchestration, IP-based rate limiting, and automatic OpenAPI documentation.
 
 ---
 
@@ -29,6 +30,7 @@ A production-pattern REST API for NWSL team rosters, built with **FastAPI**, **P
 | [Apache Airflow](https://airflow.apache.org/) | Workflow orchestration | 2.9+ |
 | [Pydantic](https://docs.pydantic.dev/) | Data validation | 2.0+ |
 | [Uvicorn](https://www.uvicorn.org/) | ASGI server | 0.29+ |
+| [slowapi](https://slowapi.readthedocs.io/) | IP-based rate limiting | 0.1.9+ |
 
 ---
 
@@ -45,6 +47,7 @@ A production-pattern REST API for NWSL team rosters, built with **FastAPI**, **P
 │                   FastAPI (port 8000)                       │
 │              Auto-generated OpenAPI docs at /docs           │
 │    Pydantic models validate all requests and responses      │
+│    slowapi middleware enforces per-IP rate limits (429)     │
 └──────────────┬──────────────────────────┬───────────────────┘
                │ SQLAlchemy ORM           │ kafka-python
                ▼                          ▼
@@ -70,7 +73,7 @@ A production-pattern REST API for NWSL team rosters, built with **FastAPI**, **P
 nwsl-roster-api/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py          # FastAPI app, all endpoints
+│   ├── main.py          # FastAPI app, all endpoints, rate limiter setup
 │   ├── models.py        # Pydantic request/response models
 │   ├── database.py      # SQLAlchemy engine, session, ORM models
 │   ├── data.py          # Database query functions
@@ -170,6 +173,7 @@ sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
 kafka-python>=2.0.0
 pydantic>=2.0.0
+slowapi>=0.1.9
 ```
 
 ### 4. Set up PostgreSQL
@@ -220,15 +224,15 @@ Interactive documentation is available at **http://localhost:8000/docs** once th
 
 ### Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/teams` | List all teams |
-| `GET` | `/teams/{team_name}` | Full roster for a team |
-| `GET` | `/teams/{team_name}/players` | Filtered player list |
-| `GET` | `/players/{name}` | Single player by name |
-| `POST` | `/players` | Add a player (publishes Kafka event) |
-| `PUT` | `/players/{name}` | Update a player (publishes Kafka event) |
-| `GET` | `/stats/{team_name}` | Squad statistics |
+| Method | Endpoint | Description | Rate limit |
+|---|---|---|---|
+| `GET` | `/teams` | List all teams | 60/min |
+| `GET` | `/teams/{team_name}` | Full roster for a team | 60/min |
+| `GET` | `/teams/{team_name}/players` | Filtered player list | 60/min |
+| `GET` | `/players/{name}` | Single player by name | 60/min |
+| `POST` | `/players` | Add a player (publishes Kafka event) | 10/min |
+| `PUT` | `/players/{name}` | Update a player (publishes Kafka event) | 10/min |
+| `GET` | `/stats/{team_name}` | Squad statistics | 60/min |
 
 ### Query Parameters — `GET /teams/{team_name}/players`
 
@@ -296,6 +300,14 @@ curl http://localhost:8000/stats/denver-summit
   }
 }
 ```
+
+---
+
+## Rate Limiting
+
+IP-based rate limiting is applied via [slowapi](https://slowapi.readthedocs.io/) using `get_remote_address` as the key function. Read endpoints allow **60 requests/minute** per IP; write endpoints (POST/PUT) allow **10 requests/minute** per IP. Exceeding a limit returns HTTP `429 Too Many Requests`.
+
+Rate limiting is disabled during pytest via an autouse fixture in `conftest.py`, with one dedicated test that re-enables it to verify 429 behavior on limit breach.
 
 ---
 
@@ -414,7 +426,8 @@ This project was built to demonstrate hands-on experience with a modern Python b
 - **PostgreSQL + SQLAlchemy** — relational database with ORM, session management, and database seeding
 - **Apache Kafka** — event publishing on data mutations using a singleton producer pattern
 - **Apache Airflow** — DAG-based workflow orchestration with `PythonOperator` and task dependencies
-- **Defensive coding** — graceful Kafka failure handling, None-safe deserializers, proper HTTP status codes
+- **Rate limiting** — per-IP request throttling via slowapi, tiered limits for reads vs. writes, test-mode bypass via autouse fixture
+- **Defensive coding** — graceful Kafka failure handling, None-safe deserializers, proper HTTP status codes, 429 responses on limit breach
 
 ---
 
@@ -427,3 +440,4 @@ This project was built to demonstrate hands-on experience with a modern Python b
 - [Pydantic Documentation](https://docs.pydantic.dev/)
 - [kafka-python Documentation](https://kafka-python.readthedocs.io/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [slowapi Documentation](https://slowapi.readthedocs.io/)
